@@ -1,0 +1,23 @@
+{
+  "name": "mcproxy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Remote headless Chromium via MCP for SaladCloud",
+  "workspaces": [
+    "shared",
+    "browser-server",
+    "mcp-server"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "build:shared": "npm run build -w shared",
+    "build:browser-server": "npm run build -w browser-server",
+    "build:mcp-server": "npm run build -w mcp-server",
+    "dev:browser-server": "npm run dev -w browser-server",
+    "dev:mcp-server": "npm run dev -w mcp-server",
+    "clean": "npm run clean --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

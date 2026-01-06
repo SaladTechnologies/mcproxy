@@ -1,0 +1,24 @@
+services:
+  browser-server:
+    build:
+      context: .
+      dockerfile: browser-server/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - AUTH_TOKEN=${AUTH_TOKEN:-dev-secret-token}
+      - MAX_CONTEXTS=10
+      - CONTEXT_TTL_MS=1800000
+    # For development, mount source for faster iteration
+    # volumes:
+    #   - ./browser-server/src:/app/browser-server/src
+    #   - ./shared/src:/app/shared/src
+    restart: unless-stopped
+    # Resource limits suitable for browser automation
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
