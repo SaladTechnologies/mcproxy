@@ -41,7 +41,7 @@ This project enables AI agents to control browsers running on geographically dis
 - **Heartbeat Keepalive**: 60-second pings keep connections alive (Salad gateway has 100s idle timeout)
 - **Multi-Region Support**: Connect to different Salad deployments for geo-distributed browsing
 - **Version Compatibility**: Capability reporting with automatic version mismatch detection
-- **26 MCP Tools**: Full browser automation capabilities including CAPTCHA detection
+- **33 MCP Tools**: Full browser automation including coordinate-based clicking for vision agents
 
 ## Prerequisites
 
@@ -165,21 +165,54 @@ Then create a session at `ws://localhost:3000`.
 - `wait_for_cloudflare` (optional): Auto-wait for Cloudflare challenges to complete
 - `cloudflare_timeout` (optional): Max wait time in ms (default: 15000)
 
-### Interaction
+### Interaction (Selector-Based)
 
 | Tool | Description |
 |------|-------------|
-| `browser_click` | Click an element (supports humanized clicking) |
-| `browser_type` | Type text into an input (supports humanized typing) |
+| `browser_click` | Click an element by CSS selector |
+| `browser_type` | Type text into an input by selector |
 | `browser_select` | Select a dropdown option |
 | `browser_hover` | Hover over an element |
-| `browser_scroll` | Scroll the page or element (supports humanized scrolling) |
+| `browser_scroll` | Scroll the page or element |
+
+### Interaction (Coordinate-Based)
+
+These tools use **relative coordinates (0-1 range)** so vision agents can click based on screenshots without worrying about resolution:
+- `x=0` is left edge, `x=1` is right edge
+- `y=0` is top edge, `y=1` is bottom edge
+
+| Tool | Description |
+|------|-------------|
+| `browser_click_at` | Click at relative coordinates (0-1 range) |
+| `browser_double_click_at` | Double-click at coordinates |
+| `browser_move_mouse` | Move mouse to coordinates |
+| `browser_drag` | Drag from one position to another |
+
+**Example workflow for vision agents:**
+```
+1. browser_screenshot()           # Get screenshot
+2. browser_click_at(0.5, 0.3)    # Click center-top area
+3. browser_keyboard_type("hello") # Type at focus
+4. browser_keyboard_press("Enter") # Submit
+```
+
+### Keyboard (Human-Like Text Entry)
+
+These tools type at the **currently focused element** (no selector needed), which is more human-like:
+
+| Tool | Description |
+|------|-------------|
+| `browser_keyboard_type` | Type text at current focus |
+| `browser_keyboard_press` | Press a key (Enter, Tab, Escape, arrows, or combos like Control+a) |
+| `browser_keyboard_down` | Hold down a key (for modifiers) |
+| `browser_keyboard_up` | Release a held key |
 
 **Humanize Option:**
-The `browser_click`, `browser_type`, and `browser_scroll` tools support a `humanize: true` parameter that adds natural, human-like behavior:
-- **Click**: Random delay before clicking, natural mouse movement to the element
-- **Type**: Random delays between keystrokes (50-150ms)
+Most interaction tools support `humanize: true` for natural, human-like behavior:
+- **Click/Click_at**: Natural curved mouse movement to the target
+- **Type/Keyboard_type**: Random delays between keystrokes (50-150ms)
 - **Scroll**: Smooth scrolling in small increments with natural timing
+- **Move_mouse/Drag**: Bezier-curved paths with acceleration/deceleration
 
 ### Content Extraction
 

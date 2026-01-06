@@ -8,6 +8,14 @@ import type {
   SelectParams,
   HoverParams,
   ScrollParams,
+  ClickAtParams,
+  DoubleClickAtParams,
+  MoveMouseParams,
+  DragParams,
+  KeyboardTypeParams,
+  KeyboardPressParams,
+  KeyboardDownParams,
+  KeyboardUpParams,
   ScreenshotParams,
   GetContentParams,
   GetTextParams,
@@ -68,7 +76,7 @@ export class CommandHandler {
       case 'reload':
         return this.reload(params as { contextId: string });
 
-      // Interaction commands
+      // Interaction commands (selector-based)
       case 'click':
         return this.click(params as ClickParams);
       case 'type':
@@ -79,6 +87,26 @@ export class CommandHandler {
         return this.hover(params as HoverParams);
       case 'scroll':
         return this.scroll(params as ScrollParams);
+
+      // Interaction commands (coordinate-based for vision agents)
+      case 'click_at':
+        return this.clickAt(params as ClickAtParams);
+      case 'double_click_at':
+        return this.doubleClickAt(params as DoubleClickAtParams);
+      case 'move_mouse':
+        return this.moveMouse(params as MoveMouseParams);
+      case 'drag':
+        return this.drag(params as DragParams);
+
+      // Keyboard commands (human-like text entry)
+      case 'keyboard_type':
+        return this.keyboardType(params as KeyboardTypeParams);
+      case 'keyboard_press':
+        return this.keyboardPress(params as KeyboardPressParams);
+      case 'keyboard_down':
+        return this.keyboardDown(params as KeyboardDownParams);
+      case 'keyboard_up':
+        return this.keyboardUp(params as KeyboardUpParams);
 
       // Content commands
       case 'screenshot':
@@ -283,6 +311,168 @@ export class CommandHandler {
       await page.evaluate(`window.scrollBy(${x}, ${y})`);
     }
     return { success: true };
+  }
+
+  // Coordinate-based interaction commands (for vision agents)
+  // All coordinates are RELATIVE (0-1 range) and converted to pixels here
+
+  // Convert relative coordinates (0-1) to absolute pixels
+  private relativeToPixels(page: Page, relX: number, relY: number): { x: number; y: number } {
+    const viewport = page.viewportSize();
+    if (!viewport) {
+      throw new Error('Viewport size not available');
+    }
+    return {
+      x: Math.round(relX * viewport.width),
+      y: Math.round(relY * viewport.height),
+    };
+  }
+
+  private async clickAt(params: ClickAtParams): Promise<{ success: boolean }> {
+    const page = this.browserManager.getPage(params.contextId);
+    const button = params.button ?? 'left';
+    const { x, y } = this.relativeToPixels(page, params.x, params.y);
+
+    if (params.humanize) {
+      // Move mouse naturally to position before clicking
+      await this.humanizedMouseMove(page, x, y);
+      await sleep(randomDelay(50, 150));
+    } else {
+      await page.mouse.move(x, y);
+    }
+
+    await page.mouse.click(x, y, { button });
+    return { success: true };
+  }
+
+  private async doubleClickAt(params: DoubleClickAtParams): Promise<{ success: boolean }> {
+    const page = this.browserManager.getPage(params.contextId);
+    const { x, y } = this.relativeToPixels(page, params.x, params.y);
+
+    if (params.humanize) {
+      await this.humanizedMouseMove(page, x, y);
+      await sleep(randomDelay(50, 150));
+    } else {
+      await page.mouse.move(x, y);
+    }
+
+    await page.mouse.dblclick(x, y);
+    return { success: true };
+  }
+
+  private async moveMouse(params: MoveMouseParams): Promise<{ success: boolean }> {
+    const page = this.browserManager.getPage(params.contextId);
+    const { x, y } = this.relativeToPixels(page, params.x, params.y);
+
+    if (params.humanize) {
+      await this.humanizedMouseMove(page, x, y);
+    } else {
+      await page.mouse.move(x, y);
+    }
+
+    return { success: true };
+  }
+
+  private async drag(params: DragParams): Promise<{ success: boolean }> {
+    const page = this.browserManager.getPage(params.contextId);
+    const from = this.relativeToPixels(page, params.fromX, params.fromY);
+    const to = this.relativeToPixels(page, params.toX, params.toY);
+
+    if (params.humanize) {
+      // Move to start position naturally
+      await this.humanizedMouseMove(page, from.x, from.y);
+      await sleep(randomDelay(50, 100));
+
+      // Press mouse button
+      await page.mouse.down();
+      await sleep(randomDelay(50, 100));
+
+      // Drag to destination with natural movement
+      await this.humanizedMouseMove(page, to.x, to.y);
+      await sleep(randomDelay(50, 100));
+
+      // Release
+      await page.mouse.up();
+    } else {
+      await page.mouse.move(from.x, from.y);
+      await page.mouse.down();
+      await page.mouse.move(to.x, to.y);
+      await page.mouse.up();
+    }
+
+    return { success: true };
+  }
+
+  // Keyboard commands (human-like text entry at current focus)
+  private async keyboardType(params: KeyboardTypeParams): Promise<{ success: boolean }> {
+    const page = this.browserManager.getPage(params.contextId);
+
+    if (params.humanize) {
+      // Type each character with random delays (50-150ms)
+      for (const char of params.text) {
+        await page.keyboard.type(char);
+        await sleep(randomDelay(50, 150));
+      }
+    } else if (params.delay) {
+      // Type with fixed delay
+      await page.keyboard.type(params.text, { delay: params.delay });
+    } else {
+      // Instant typing
+      await page.keyboard.type(params.text);
+    }
+
+    return { success: true };
+  }
+
+  private async keyboardPress(params: KeyboardPressParams): Promise<{ success: boolean }> {
+    const page = this.browserManager.getPage(params.contextId);
+    await page.keyboard.press(params.key);
+    return { success: true };
+  }
+
+  private async keyboardDown(params: KeyboardDownParams): Promise<{ success: boolean }> {
+    const page = this.browserManager.getPage(params.contextId);
+    await page.keyboard.down(params.key);
+    return { success: true };
+  }
+
+  private async keyboardUp(params: KeyboardUpParams): Promise<{ success: boolean }> {
+    const page = this.browserManager.getPage(params.contextId);
+    await page.keyboard.up(params.key);
+    return { success: true };
+  }
+
+  // Helper for humanized mouse movement with curved path
+  private async humanizedMouseMove(page: Page, targetX: number, targetY: number): Promise<void> {
+    // Get current mouse position (start from center if unknown)
+    const viewport = page.viewportSize();
+    const startX = viewport ? viewport.width / 2 : 0;
+    const startY = viewport ? viewport.height / 2 : 0;
+
+    // Calculate distance and number of steps
+    const distance = Math.sqrt(Math.pow(targetX - startX, 2) + Math.pow(targetY - startY, 2));
+    const steps = Math.max(10, Math.min(50, Math.floor(distance / 20)));
+
+    // Generate curved path using bezier-like movement
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      // Ease-in-out for natural acceleration/deceleration
+      const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+      // Add slight curve by varying the path
+      const curve = Math.sin(t * Math.PI) * (distance * 0.1);
+      const perpX = -(targetY - startY) / distance;
+      const perpY = (targetX - startX) / distance;
+
+      const x = startX + (targetX - startX) * eased + perpX * curve * (Math.random() * 0.5 + 0.5);
+      const y = startY + (targetY - startY) * eased + perpY * curve * (Math.random() * 0.5 + 0.5);
+
+      await page.mouse.move(x, y);
+      await sleep(randomDelay(5, 15));
+    }
+
+    // Final move to exact target
+    await page.mouse.move(targetX, targetY);
   }
 
   // Content commands

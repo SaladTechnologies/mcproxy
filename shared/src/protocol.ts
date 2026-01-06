@@ -61,12 +61,22 @@ export type CommandType =
   | 'go_back'
   | 'go_forward'
   | 'reload'
-  // Interaction
+  // Interaction (selector-based)
   | 'click'
   | 'type'
   | 'select'
   | 'hover'
   | 'scroll'
+  // Interaction (coordinate-based for vision agents)
+  | 'click_at'
+  | 'double_click_at'
+  | 'move_mouse'
+  | 'drag'
+  // Keyboard (human-like text entry)
+  | 'keyboard_type'
+  | 'keyboard_press'
+  | 'keyboard_down'
+  | 'keyboard_up'
   // Content
   | 'screenshot'
   | 'get_content'
@@ -174,6 +184,87 @@ export interface ScrollParams {
   humanize?: boolean;
 }
 
+// Coordinate-based interactions (for vision agents)
+// All coordinates are RELATIVE (0-1 range), where:
+//   x: 0 = left edge, 1 = right edge
+//   y: 0 = top edge, 1 = bottom edge
+// This allows vision agents to work with screenshots at any resolution.
+export interface ClickAtParams {
+  contextId: string;
+  // Relative X coordinate (0-1, where 0=left, 1=right)
+  x: number;
+  // Relative Y coordinate (0-1, where 0=top, 1=bottom)
+  y: number;
+  // Mouse button (default: 'left')
+  button?: 'left' | 'right' | 'middle';
+  // Humanize the click (natural mouse movement to position)
+  humanize?: boolean;
+}
+
+export interface DoubleClickAtParams {
+  contextId: string;
+  // Relative X coordinate (0-1, where 0=left, 1=right)
+  x: number;
+  // Relative Y coordinate (0-1, where 0=top, 1=bottom)
+  y: number;
+  // Humanize the click (natural mouse movement to position)
+  humanize?: boolean;
+}
+
+export interface MoveMouseParams {
+  contextId: string;
+  // Relative X coordinate (0-1, where 0=left, 1=right)
+  x: number;
+  // Relative Y coordinate (0-1, where 0=top, 1=bottom)
+  y: number;
+  // Humanize movement (curved path with natural speed)
+  humanize?: boolean;
+}
+
+export interface DragParams {
+  contextId: string;
+  // Relative start X coordinate (0-1)
+  fromX: number;
+  // Relative start Y coordinate (0-1)
+  fromY: number;
+  // Relative end X coordinate (0-1)
+  toX: number;
+  // Relative end Y coordinate (0-1)
+  toY: number;
+  // Humanize dragging (natural acceleration/deceleration)
+  humanize?: boolean;
+}
+
+// Keyboard interactions (human-like text entry at current focus)
+export interface KeyboardTypeParams {
+  contextId: string;
+  // Text to type at current focus
+  text: string;
+  // Humanize typing (random delays between keystrokes, 50-150ms)
+  humanize?: boolean;
+  // Fixed delay between keystrokes in ms (ignored if humanize is true)
+  delay?: number;
+}
+
+export interface KeyboardPressParams {
+  contextId: string;
+  // Key to press (e.g., 'Enter', 'Tab', 'Escape', 'ArrowDown', 'Backspace', 'a', 'A')
+  // See: https://playwright.dev/docs/api/class-keyboard#keyboard-press
+  key: string;
+}
+
+export interface KeyboardDownParams {
+  contextId: string;
+  // Key to hold down (e.g., 'Shift', 'Control', 'Alt', 'Meta')
+  key: string;
+}
+
+export interface KeyboardUpParams {
+  contextId: string;
+  // Key to release
+  key: string;
+}
+
 export interface ScreenshotParams {
   contextId: string;
   fullPage?: boolean;
@@ -256,6 +347,14 @@ export type CommandParams =
   | SelectParams
   | HoverParams
   | ScrollParams
+  | ClickAtParams
+  | DoubleClickAtParams
+  | MoveMouseParams
+  | DragParams
+  | KeyboardTypeParams
+  | KeyboardPressParams
+  | KeyboardDownParams
+  | KeyboardUpParams
   | ScreenshotParams
   | GetContentParams
   | GetTextParams

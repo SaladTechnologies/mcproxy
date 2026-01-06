@@ -2,8 +2,8 @@ import type { BrowserServerCapabilities, BrowserType } from '@mcproxy/shared';
 import { BrowserManager } from './browser-manager.js';
 
 // Browser server version info
-export const BROWSER_SERVER_VERSION = '1.1.0';
-export const PROTOCOL_VERSION = '1.1';
+export const BROWSER_SERVER_VERSION = '1.2.0';
+export const PROTOCOL_VERSION = '1.2';
 
 // Build capabilities object based on current server features
 export function getCapabilities(): BrowserServerCapabilities {
@@ -48,6 +48,33 @@ export function getCapabilities(): BrowserServerCapabilities {
         supported: true,
         features: ['humanize', 'selector'],
       },
+
+      // Coordinate-based interaction commands (for vision agents)
+      click_at: {
+        supported: true,
+        features: ['humanize', 'button'],
+      },
+      double_click_at: {
+        supported: true,
+        features: ['humanize'],
+      },
+      move_mouse: {
+        supported: true,
+        features: ['humanize'],
+      },
+      drag: {
+        supported: true,
+        features: ['humanize'],
+      },
+
+      // Keyboard commands (human-like text entry)
+      keyboard_type: {
+        supported: true,
+        features: ['humanize', 'delay'],
+      },
+      keyboard_press: { supported: true },
+      keyboard_down: { supported: true },
+      keyboard_up: { supported: true },
 
       // Content commands
       screenshot: {

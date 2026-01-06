@@ -134,8 +134,10 @@ docker push saladtechnologies/misc:mcproxy-browser-server
 1. **Stealth First**: All browser automation uses stealth plugin and anti-detection measures
 2. **Location Aware**: Sessions always report geographic location for agent context
 3. **Humanize Option**: Interaction commands support `humanize: true` for human-like behavior
-4. **Capability Reporting**: Always update capabilities when adding features
-5. **Error Handling**: Commands should return success/error objects, not throw
+4. **Relative Coordinates**: Coordinate-based tools (click_at, drag, etc.) use 0-1 range so vision agents work at any resolution
+5. **Keyboard Tools**: Prefer keyboard_type/keyboard_press over selector-based type for human-like behavior
+6. **Capability Reporting**: Always update capabilities when adding features
+7. **Error Handling**: Commands should return success/error objects, not throw
 
 ## Deployment Notes
 

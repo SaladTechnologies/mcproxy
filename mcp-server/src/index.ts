@@ -1,13 +1,9 @@
 #!/usr/bin/env node
 
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
 import { SessionManager } from './session-manager.js';
-import { getToolDefinitions, handleToolCall } from './tools/index.js';
+import { registerTools } from './tools/index.js';
 
 // Configuration from environment
 const HEARTBEAT_INTERVAL_MS = parseInt(
@@ -38,168 +34,14 @@ async function main(): Promise<void> {
     commandTimeoutMs: COMMAND_TIMEOUT_MS,
   });
 
-  // Create MCP server
-  const server = new Server(
-    {
-      name: 'mcproxy',
-      version: '1.0.0',
-    },
-    {
-      capabilities: {
-        tools: {},
-      },
-    }
-  );
-
-  // Handle list tools request
-  server.setRequestHandler(ListToolsRequestSchema, async () => {
-    return {
-      tools: getToolDefinitions(),
-    };
+  // Create MCP server using the newer McpServer API
+  const server = new McpServer({
+    name: 'mcproxy',
+    version: '1.2.0',
   });
 
-  // Handle tool calls
-  server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const { name, arguments: args } = request.params;
-
-    try {
-      const result = await handleToolCall(sessionManager, name, args ?? {});
-
-      // Handle screenshot specially - return as image content (with optional file save info)
-      if (name === 'browser_screenshot' && result && typeof result === 'object') {
-        const screenshotResult = result as { data: string; mimeType: string; saved_to?: string };
-        const content: Array<{ type: string; text?: string; data?: string; mimeType?: string }> = [];
-
-        // If saved to file, include the path
-        if (screenshotResult.saved_to) {
-          content.push({
-            type: 'text',
-            text: `Screenshot saved to: ${screenshotResult.saved_to}`,
-          });
-        }
-
-        content.push({
-          type: 'image',
-          data: screenshotResult.data,
-          mimeType: screenshotResult.mimeType,
-        });
-
-        return { content };
-      }
-
-      // Handle CAPTCHA check - include screenshot as image for agent to analyze
-      if (name === 'browser_check_captcha' && result && typeof result === 'object') {
-        const captchaResult = result as {
-          detected: boolean;
-          screenshot?: string;
-          fullPageScreenshot?: string;
-          [key: string]: unknown;
-        };
-
-        const content: Array<{ type: string; text?: string; data?: string; mimeType?: string }> = [];
-
-        // Add text summary (without the base64 data to keep it readable)
-        const textResult = { ...captchaResult };
-        delete textResult.screenshot;
-        delete textResult.fullPageScreenshot;
-        content.push({
-          type: 'text',
-          text: JSON.stringify(textResult, null, 2),
-        });
-
-        // Add CAPTCHA element screenshot if present
-        if (captchaResult.screenshot) {
-          content.push({
-            type: 'image',
-            data: captchaResult.screenshot,
-            mimeType: 'image/png',
-          });
-        }
-
-        // Add full page screenshot for context
-        if (captchaResult.fullPageScreenshot) {
-          content.push({
-            type: 'image',
-            data: captchaResult.fullPageScreenshot,
-            mimeType: 'image/png',
-          });
-        }
-
-        return { content };
-      }
-
-      // Handle navigate with CAPTCHA - include screenshot if CAPTCHA detected
-      if (name === 'browser_navigate' && result && typeof result === 'object') {
-        const navResult = result as {
-          url: string;
-          title: string;
-          captcha?: {
-            detected: boolean;
-            screenshot?: string;
-            fullPageScreenshot?: string;
-            [key: string]: unknown;
-          };
-        };
-
-        if (navResult.captcha?.detected) {
-          const content: Array<{ type: string; text?: string; data?: string; mimeType?: string }> = [];
-
-          // Add text summary
-          const textResult = {
-            ...navResult,
-            captcha: { ...navResult.captcha },
-          };
-          delete textResult.captcha.screenshot;
-          delete textResult.captcha.fullPageScreenshot;
-          content.push({
-            type: 'text',
-            text: JSON.stringify(textResult, null, 2),
-          });
-
-          // Add CAPTCHA screenshot
-          if (navResult.captcha.screenshot) {
-            content.push({
-              type: 'image',
-              data: navResult.captcha.screenshot,
-              mimeType: 'image/png',
-            });
-          }
-
-          // Add full page screenshot
-          if (navResult.captcha.fullPageScreenshot) {
-            content.push({
-              type: 'image',
-              data: navResult.captcha.fullPageScreenshot,
-              mimeType: 'image/png',
-            });
-          }
-
-          return { content };
-        }
-      }
-
-      // Return result as text
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify(result, null, 2),
-          },
-        ],
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Error: ${message}`,
-          },
-        ],
-        isError: true,
-      };
-    }
-  });
+  // Register all browser automation tools
+  registerTools(server, sessionManager);
 
   // Graceful shutdown
   const shutdown = async (signal: string): Promise<void> => {
