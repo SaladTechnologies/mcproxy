@@ -13,6 +13,7 @@ import { CommandHandler } from './command-handler.js';
 interface AuthenticatedClient {
   ws: WebSocket;
   authenticated: boolean;
+  contextIds: Set<string>;  // Track contexts owned by this connection
 }
 
 export class BrowserWebSocketServer {
@@ -35,7 +36,7 @@ export class BrowserWebSocketServer {
 
     this.wss.on('connection', (ws: WebSocket) => {
       console.log('New connection');
-      this.clients.set(ws, { ws, authenticated: false });
+      this.clients.set(ws, { ws, authenticated: false, contextIds: new Set() });
 
       // Set auth timeout - client must authenticate within 10 seconds
       const authTimeout = setTimeout(() => {
@@ -56,8 +57,22 @@ export class BrowserWebSocketServer {
         }
       });
 
-      ws.on('close', () => {
-        console.log('Connection closed');
+      ws.on('close', async () => {
+        const client = this.clients.get(ws);
+        if (client && client.contextIds.size > 0) {
+          console.log(`Connection closed, cleaning up ${client.contextIds.size} context(s)`);
+          // Close all browser contexts owned by this connection
+          for (const contextId of client.contextIds) {
+            try {
+              await this.commandHandler.handleCommand('close_context', { contextId });
+              console.log(`Cleaned up context ${contextId}`);
+            } catch (err) {
+              console.error(`Failed to clean up context ${contextId}:`, err);
+            }
+          }
+        } else {
+          console.log('Connection closed');
+        }
         clearTimeout(authTimeout);
         this.clients.delete(ws);
       });
@@ -135,10 +150,21 @@ export class BrowserWebSocketServer {
 
   private async handleCommand(ws: WebSocket, message: CommandMessage): Promise<void> {
     const { id, command, params } = message;
+    const client = this.clients.get(ws);
 
     try {
       console.log(`Handling command: ${command} (${id})`);
       const result = await this.commandHandler.handleCommand(command, params);
+
+      // Track context ownership for cleanup on disconnect
+      if (client) {
+        if (command === 'create_context' && result && typeof result === 'object' && 'contextId' in result) {
+          client.contextIds.add((result as { contextId: string }).contextId);
+        } else if (command === 'close_context' && params && typeof params === 'object' && 'contextId' in params) {
+          client.contextIds.delete((params as { contextId: string }).contextId);
+        }
+      }
+
       this.sendResponse(ws, id, result);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
