@@ -46,8 +46,8 @@ This project enables AI agents to control browsers running on geographically dis
 ## Prerequisites
 
 - Node.js 20+
-- Docker (for local testing)
-- SaladCloud account (for deployment)
+- SaladCloud account (for production deployment)
+- Docker (optional, for local testing)
 
 ## AI-Assisted Setup
 
@@ -57,13 +57,12 @@ Copy and paste this prompt to your AI agent to help you get mcproxy configured:
 Help me set up mcproxy for remote browser automation. I need you to:
 
 1. Detect which MCP client I'm using (Claude Desktop, Claude Code, Cursor, Windsurf, or other)
-2. Check if I have the mcproxy repository cloned, or if I should use Docker
+2. Clone the mcproxy repository and build it
 3. Help me configure the MCP server with the correct JSON configuration
 4. Generate a secure AUTH_TOKEN for me
 5. Test that the connection works by creating a browser session
 
 The mcproxy repo is at: https://github.com/SaladTechnologies/mcproxy
-Docker image: ghcr.io/saladtechnologies/mcproxy/mcp-server:latest
 
 If I don't have a SaladCloud endpoint yet, help me test locally with Docker Compose first.
 ```
@@ -266,10 +265,6 @@ Supported CAPTCHA types: reCAPTCHA, hCaptcha, Cloudflare Turnstile, FunCaptcha, 
 
 ## MCP Client Configuration
 
-The MCP server can be run from source, via Docker, or using npx. Choose the method that works best for your setup.
-
-### Option 1: From Source
-
 ```bash
 # Clone and build
 git clone https://github.com/SaladTechnologies/mcproxy.git
@@ -278,27 +273,10 @@ npm install
 npm run build
 ```
 
-### Option 2: Docker (Multi-Architecture)
-
-```bash
-# Pull the multi-arch image (works on Mac M-series and Linux)
-docker pull ghcr.io/saladtechnologies/mcproxy/mcp-server:latest
-```
-
-### Option 3: npx (Coming Soon)
-
-```bash
-# Once published to npm
-npx @mcproxy/mcp-server
-```
-
----
-
 ### Claude Desktop
 
 Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
 
-**From Source:**
 ```json
 {
   "mcpServers": {
@@ -314,30 +292,10 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 }
 ```
 
-**From Docker:**
-```json
-{
-  "mcpServers": {
-    "mcproxy": {
-      "command": "docker",
-      "args": [
-        "run", "-i", "--rm",
-        "-e", "MCPROXY_AUTH_TOKEN=your-secret-token",
-        "-e", "MCPROXY_DEFAULT_ENDPOINT=wss://your-salad-endpoint.salad.cloud",
-        "ghcr.io/saladtechnologies/mcproxy/mcp-server:latest"
-      ]
-    }
-  }
-}
-```
-
----
-
 ### Claude Code (VS Code Extension)
 
 Add to your workspace `.mcp.json` or global settings:
 
-**From Source:**
 ```json
 {
   "mcpServers": {
@@ -353,30 +311,10 @@ Add to your workspace `.mcp.json` or global settings:
 }
 ```
 
-**From Docker:**
-```json
-{
-  "mcpServers": {
-    "mcproxy": {
-      "command": "docker",
-      "args": [
-        "run", "-i", "--rm",
-        "-e", "MCPROXY_AUTH_TOKEN=your-secret-token",
-        "-e", "MCPROXY_DEFAULT_ENDPOINT=wss://your-salad-endpoint.salad.cloud",
-        "ghcr.io/saladtechnologies/mcproxy/mcp-server:latest"
-      ]
-    }
-  }
-}
-```
-
----
-
 ### Cursor
 
 Add to Cursor's MCP settings (`~/.cursor/mcp.json`):
 
-**From Source:**
 ```json
 {
   "mcpServers": {
@@ -391,25 +329,6 @@ Add to Cursor's MCP settings (`~/.cursor/mcp.json`):
   }
 }
 ```
-
-**From Docker:**
-```json
-{
-  "mcpServers": {
-    "mcproxy": {
-      "command": "docker",
-      "args": [
-        "run", "-i", "--rm",
-        "-e", "MCPROXY_AUTH_TOKEN=your-secret-token",
-        "-e", "MCPROXY_DEFAULT_ENDPOINT=wss://your-salad-endpoint.salad.cloud",
-        "ghcr.io/saladtechnologies/mcproxy/mcp-server:latest"
-      ]
-    }
-  }
-}
-```
-
----
 
 ### Windsurf
 
