@@ -63,6 +63,8 @@ This project enables AI agents to control browsers running on geographically dis
     - [Bot Detection](#bot-detection)
     - [Cloudflare Challenges](#cloudflare-challenges)
     - [Version Mismatches](#version-mismatches)
+    - [Navigation Errors with networkidle](#navigation-errors-with-networkidle)
+    - [Screenshots and File Handling](#screenshots-and-file-handling)
     - [Memory Issues](#memory-issues)
   - [License](#license)
 
@@ -740,6 +742,21 @@ If you see unexpected behavior or missing features:
 - Use `browser_get_capabilities` to check server version and supported features
 - The tool will warn if browser server and MCP server versions are mismatched
 - Update the component that's behind (recommendation provided in response)
+
+### Navigation Errors with networkidle
+
+If navigation fails with `net::ERR_ABORTED` when using `wait_until: networkidle`:
+- Sites with dynamic content or continuous network activity may never reach "network idle"
+- Use `load` or `domcontentloaded` instead (default is `domcontentloaded`)
+- `networkidle` is best for static pages or when you need all resources fully loaded
+- For most use cases, the default `domcontentloaded` is fastest and most reliable
+
+### Screenshots and File Handling
+
+Screenshots from `browser_screenshot` are returned as base64 and displayed inline in MCP responses:
+- The inline image display works automatically - no need to use `present_files` or similar tools
+- The optional `file_path` parameter saves to disk as a convenience but the base64 response is the primary output
+- If using `file_path`, the file is saved on the machine running the MCP server (your local machine), not the remote browser server
 
 ### Memory Issues
 
