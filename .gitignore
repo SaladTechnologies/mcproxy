@@ -10,6 +10,9 @@ dist/
 .env.local
 .env.*.local
 
+# MCP config (may contain tokens)
+.mcp.json
+
 # IDE
 .vscode/
 .idea/

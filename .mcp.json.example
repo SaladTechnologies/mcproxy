@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "mcproxy": {
+      "command": "node",
+      "args": ["mcp-server/dist/index.js"],
+      "env": {
+        "MCPROXY_AUTH_TOKEN": "your-secret-token-here",
+        "MCPROXY_DEFAULT_ENDPOINT": "wss://your-salad-endpoint.salad.cloud"
+      }
+    }
+  }
+}
