@@ -14,6 +14,12 @@ This project enables AI agents to control browsers running on geographically dis
     - [2. Build](#2-build)
     - [3. Local Testing](#3-local-testing)
     - [4. Test with MCP Inspector](#4-test-with-mcp-inspector)
+  - [Using Pre-Built Docker Images](#using-pre-built-docker-images)
+    - [Docker Images](#docker-images)
+    - [Running Browser Server with Docker](#running-browser-server-with-docker)
+    - [Running MCP Server with Docker](#running-mcp-server-with-docker)
+    - [MCP Client Configuration with Docker](#mcp-client-configuration-with-docker)
+    - [Full Local Docker Setup](#full-local-docker-setup)
   - [Configuration](#configuration)
     - [Browser Server (Environment Variables)](#browser-server-environment-variables)
     - [MCP Server (Environment Variables)](#mcp-server-environment-variables)
@@ -162,6 +168,98 @@ MCPROXY_AUTH_TOKEN=dev-secret-token npx @modelcontextprotocol/inspector node mcp
 ```
 
 Then create a session at `ws://localhost:3000`.
+
+## Using Pre-Built Docker Images
+
+Pre-built Docker images are available on GitHub Container Registry for both components.
+
+### Docker Images
+
+| Component | Image | Platforms |
+|-----------|-------|-----------|
+| Browser Server | `ghcr.io/saladtechnologies/mcproxy/browser-server:latest` | linux/amd64 |
+| MCP Server | `ghcr.io/saladtechnologies/mcproxy/mcp-server:latest` | linux/amd64, linux/arm64 |
+
+### Running Browser Server with Docker
+
+```bash
+# Start browser server on port 3000
+docker run -d \
+  --name mcproxy-browser-server \
+  -p 3000:3000 \
+  -e AUTH_TOKEN=your-secret-token \
+  ghcr.io/saladtechnologies/mcproxy/browser-server:latest
+```
+
+### Running MCP Server with Docker
+
+The MCP server uses stdio for communication, so it runs interactively with `-i` flag:
+
+```bash
+# Run MCP server (connects to local browser server)
+docker run --rm -i \
+  --network=host \
+  -e MCPROXY_AUTH_TOKEN=your-secret-token \
+  -e MCPROXY_DEFAULT_ENDPOINT=ws://localhost:3000 \
+  ghcr.io/saladtechnologies/mcproxy/mcp-server:latest
+```
+
+### MCP Client Configuration with Docker
+
+Configure your MCP client to use the Docker image instead of running from source:
+
+**Claude Desktop** (`claude_desktop_config.json`):
+```json
+{
+  "mcpServers": {
+    "mcproxy": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i", "--network=host",
+        "-e", "MCPROXY_AUTH_TOKEN=your-secret-token",
+        "-e", "MCPROXY_DEFAULT_ENDPOINT=wss://your-salad-endpoint.salad.cloud",
+        "ghcr.io/saladtechnologies/mcproxy/mcp-server:latest"
+      ]
+    }
+  }
+}
+```
+
+**Claude Code** (`.mcp.json`):
+```json
+{
+  "mcpServers": {
+    "mcproxy": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i", "--network=host",
+        "-e", "MCPROXY_AUTH_TOKEN=your-secret-token",
+        "-e", "MCPROXY_DEFAULT_ENDPOINT=wss://your-salad-endpoint.salad.cloud",
+        "ghcr.io/saladtechnologies/mcproxy/mcp-server:latest"
+      ]
+    }
+  }
+}
+```
+
+### Full Local Docker Setup
+
+To test everything locally with Docker (no build required):
+
+```bash
+# 1. Start browser server
+docker run -d \
+  --name mcproxy-browser-server \
+  -p 3000:3000 \
+  -e AUTH_TOKEN=test-token \
+  ghcr.io/saladtechnologies/mcproxy/browser-server:latest
+
+# 2. Configure your MCP client to use the MCP server image
+#    with MCPROXY_DEFAULT_ENDPOINT=ws://localhost:3000
+
+# 3. When done, clean up
+docker stop mcproxy-browser-server && docker rm mcproxy-browser-server
+```
 
 ## Configuration
 
