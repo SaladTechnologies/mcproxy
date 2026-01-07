@@ -126,7 +126,7 @@ docker push saladtechnologies/misc:mcproxy-browser-server
 ### MCP Server
 - `MCPROXY_AUTH_TOKEN` or `AUTH_TOKEN`: Required. Must match browser server.
 - `MCPROXY_DEFAULT_ENDPOINT`: Optional. Default WebSocket endpoint.
-- `MCPROXY_HEARTBEAT_INTERVAL_MS`: Default 60000. Keepalive interval.
+- `MCPROXY_HEARTBEAT_INTERVAL_MS`: Default 30000. Keepalive interval.
 - `MCPROXY_COMMAND_TIMEOUT_MS`: Default 30000. Command timeout.
 
 ## Important Conventions
@@ -144,4 +144,4 @@ docker push saladtechnologies/misc:mcproxy-browser-server
 - Browser server deployed to SaladCloud via Container Gateway
 - Each container replica is a separate geographic location
 - WebSocket connections have session affinity to specific replicas
-- 60s heartbeat keeps connections alive (Salad gateway has 100s idle timeout)
+- 30s heartbeat keeps connections alive (Salad gateway has 100s idle timeout)

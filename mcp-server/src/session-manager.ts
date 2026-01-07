@@ -24,7 +24,7 @@ export class SessionManager {
     commandTimeoutMs?: number;
   }) {
     this.authToken = options.authToken;
-    this.heartbeatIntervalMs = options.heartbeatIntervalMs ?? 60000;
+    this.heartbeatIntervalMs = options.heartbeatIntervalMs ?? 30000;
     this.commandTimeoutMs = options.commandTimeoutMs ?? 30000;
   }
 

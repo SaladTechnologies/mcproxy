@@ -7,7 +7,7 @@ import { registerTools } from './tools/index.js';
 
 // Configuration from environment
 const HEARTBEAT_INTERVAL_MS = parseInt(
-  process.env.MCPROXY_HEARTBEAT_INTERVAL_MS ?? process.env.HEARTBEAT_INTERVAL_MS ?? '60000',
+  process.env.MCPROXY_HEARTBEAT_INTERVAL_MS ?? process.env.HEARTBEAT_INTERVAL_MS ?? '30000',
   10
 );
 const COMMAND_TIMEOUT_MS = parseInt(

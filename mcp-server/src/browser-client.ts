@@ -186,7 +186,7 @@ export class BrowserClient {
   }
 
   private startHeartbeat(): void {
-    const intervalMs = this.options.heartbeatIntervalMs ?? 60000;
+    const intervalMs = this.options.heartbeatIntervalMs ?? 30000;
 
     this.heartbeatInterval = setInterval(() => {
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {

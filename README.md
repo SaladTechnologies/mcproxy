@@ -77,7 +77,7 @@ This project enables AI agents to control browsers running on geographically dis
 │  (Claude, etc)  │────▶│  ┌───────────────────────────────────────────────┐  │
 └─────────────────┘     │  │         MCP Server (stdio)                     │  │
       stdio             │  │  - Manages WebSocket connections               │  │
-                        │  │  - 60s heartbeat keepalive                     │  │
+                        │  │  - 30s heartbeat keepalive                     │  │
                         │  │  - Session ID → connection mapping             │  │
                         │  └──────┬─────────────────────┬──────────────────┘  │
                         └─────────│─────────────────────│──────────────────────┘
@@ -103,7 +103,7 @@ This project enables AI agents to control browsers running on geographically dis
 - **Cookie Persistence**: Save and restore cookies for session management and authentication
 - **Realistic User Agents**: Auto-generates realistic user agents using up-to-date browser fingerprint data
 - **Session Affinity**: WebSocket connections pin sessions to specific container replicas
-- **Heartbeat Keepalive**: 60-second pings keep connections alive (Salad gateway has 100s idle timeout)
+- **Heartbeat Keepalive**: 30-second pings keep connections alive (Salad gateway has 100s idle timeout)
 - **Multi-Region Support**: Connect to different Salad deployments for geo-distributed browsing
 - **Version Compatibility**: Capability reporting with automatic version mismatch detection
 - **33 MCP Tools**: Full browser automation including coordinate-based clicking for vision agents
@@ -299,7 +299,7 @@ The browser server exposes health check endpoints on `HEALTH_PORT` (default 8080
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `MCPROXY_AUTH_TOKEN` or `AUTH_TOKEN` | (required) | Shared secret for authentication |
-| `MCPROXY_HEARTBEAT_INTERVAL_MS` | `60000` | Heartbeat interval (60s) |
+| `MCPROXY_HEARTBEAT_INTERVAL_MS` | `30000` | Heartbeat interval (30s) |
 | `MCPROXY_COMMAND_TIMEOUT_MS` | `30000` | Command timeout (30s) |
 
 ## MCP Tools
@@ -715,7 +715,7 @@ npm run dev:mcp-server
 ### Connection Timeouts
 
 If sessions disconnect unexpectedly:
-- Check that heartbeat interval (60s) is less than Salad's idle timeout (100s)
+- Check that heartbeat interval (30s default) is less than Salad's idle timeout (100s)
 - Verify network connectivity to the SaladCloud endpoint
 - Check container logs for errors
 
