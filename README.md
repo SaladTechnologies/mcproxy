@@ -108,26 +108,26 @@ This project enables AI agents to control browsers running on geographically dis
 
 ## Prerequisites
 
-- Node.js 20+
+- Docker (recommended) or Node.js 20+
 - SaladCloud account (for production deployment)
-- Docker (optional, for local testing)
 
 ## AI-Assisted Setup
 
 Copy and paste this prompt to your AI agent to help you get mcproxy configured:
 
 ```
-Help me set up mcproxy for remote browser automation. I need you to:
+Help me set up mcproxy for remote browser automation. I'm using [Claude Desktop / Claude Code / Cursor / Windsurf / other].
 
-1. Detect which MCP client I'm using (Claude Desktop, Claude Code, Cursor, Windsurf, or other)
-2. Clone the mcproxy repository and build it
-3. Help me configure the MCP server with the correct JSON configuration
-4. Generate a secure AUTH_TOKEN for me
-5. Test that the connection works by creating a browser session
+1. Check if I have Docker installed
+2. If Docker is available, use the pre-built Docker images from ghcr.io/saladtechnologies/mcproxy
+3. If Docker is not available, clone the mcproxy repository and build from source
+4. Help me configure the MCP server with the correct JSON configuration for my client
+5. Generate a secure AUTH_TOKEN for me
+6. Test that the connection works by creating a browser session
 
 The mcproxy repo is at: https://github.com/SaladTechnologies/mcproxy
 
-If I don't have a SaladCloud endpoint yet, help me test locally with Docker Compose first.
+If I don't have a SaladCloud endpoint yet, help me test locally first.
 ```
 
 ## Quick Start
