@@ -116,18 +116,23 @@ This project enables AI agents to control browsers running on geographically dis
 Copy and paste this prompt to your AI agent to help you get mcproxy configured:
 
 ```
-Help me set up mcproxy for remote browser automation. I'm using [Claude Desktop / Claude Code / Cursor / Windsurf / other].
+Help me set up mcproxy for remote browser automation.
 
+MCP Client: [Claude Desktop / Claude Code / Cursor / Windsurf / other]
+SaladCloud Endpoint: [your endpoint URL, or "none" if you need to create one]
+
+Setup steps:
 1. Check if I have Docker installed
-2. If Docker is available, use the pre-built Docker images from ghcr.io/saladtechnologies/mcproxy
-3. If Docker is not available, clone the mcproxy repository and build from source
-4. Help me configure the MCP server with the correct JSON configuration for my client
-5. Generate a secure AUTH_TOKEN for me
-6. Test that the connection works by creating a browser session
+2. If Docker is available, use the pre-built images from ghcr.io/saladtechnologies/mcproxy
+3. If Docker is not available, clone and build from https://github.com/SaladTechnologies/mcproxy
+4. Configure the MCP server JSON for my client
+5. Generate a secure AUTH_TOKEN
+6. Test by creating a browser session
 
-The mcproxy repo is at: https://github.com/SaladTechnologies/mcproxy
-
-If I don't have a SaladCloud endpoint yet, help me test locally first.
+Notes:
+- If my endpoint is HTTP/HTTPS, convert it to WSS (wss://...)
+- If I don't have an endpoint, guide me to https://portal.salad.com to create a container group
+- For local testing without SaladCloud, help me run a local browser server with Docker
 ```
 
 ## Quick Start
