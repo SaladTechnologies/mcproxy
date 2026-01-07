@@ -22,6 +22,7 @@ This project enables AI agents to control browsers running on geographically dis
     - [Full Local Docker Setup](#full-local-docker-setup)
   - [Configuration](#configuration)
     - [Browser Server (Environment Variables)](#browser-server-environment-variables)
+    - [Health Check Endpoints](#health-check-endpoints)
     - [MCP Server (Environment Variables)](#mcp-server-environment-variables)
   - [MCP Tools](#mcp-tools)
     - [Session Management](#session-management)
@@ -271,6 +272,20 @@ docker stop mcproxy-browser-server && docker rm mcproxy-browser-server
 | `AUTH_TOKEN` | (required) | Shared secret for authentication |
 | `MAX_CONTEXTS` | `10` | Max browser contexts per container |
 | `CONTEXT_TTL_MS` | `1800000` | Context timeout (30 minutes) |
+| `HEALTH_PORT` | `8080` | Health/readiness check HTTP port |
+
+#### Health Check Endpoints
+
+The browser server exposes health check endpoints on `HEALTH_PORT` (default 8080):
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /health` | Returns health status with context count. Response: `{"status": "healthy", "contexts": 0, "maxContexts": 10}` |
+| `GET /ready` | Readiness probe. Returns `{"ready": true}` when server is ready to accept connections |
+
+**SaladCloud Configuration:**
+- **Startup Probe**: `GET /ready` on port `8080` - confirms server is initialized
+- **Liveness Probe**: `GET /health` on port `8080` - confirms server is healthy
 
 ### MCP Server (Environment Variables)
 
@@ -536,6 +551,8 @@ docker push your-registry/mcproxy-browser:latest
      - `MAX_CONTEXTS`: `10` (adjust based on container resources)
    - **Resources**: Recommend at least 2GB RAM for browser automation
    - **Networking**: Enable Container Gateway
+   - **Startup Probe**: HTTP `GET /ready` on port `8080`
+   - **Liveness Probe**: HTTP `GET /health` on port `8080`
 4. Deploy to your desired regions
 
 ### 3. Note Your Endpoints
