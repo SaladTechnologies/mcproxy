@@ -3,6 +3,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { writeFile, mkdir } from 'fs/promises';
 import { dirname, resolve, isAbsolute } from 'path';
 import type { SessionManager } from '../session-manager.js';
+import { getCredentialStore } from '../credential-store.js';
 
 // MCP Server version info
 export const MCP_SERVER_VERSION = '1.2.0';
@@ -901,6 +902,326 @@ export function registerTools(server: McpServer, sessionManager: SessionManager)
     async ({ session_id }) => {
       const result = await sessionManager.sendCommand(session_id, 'clear_cookies', {});
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    }
+  );
+
+  // ============================================
+  // CREDENTIAL TOOLS (secure credential handling)
+  // These tools allow typing credentials by reference, keeping actual values hidden from the model
+  // ============================================
+
+  const credentialStore = getCredentialStore();
+
+  server.registerTool(
+    'browser_list_credentials',
+    {
+      title: 'List Stored Credentials',
+      description:
+        'List all available credential names that can be used with browser_type_credential. Returns names and their source (env var or file), but NEVER the actual values. Credentials are stored locally and resolved by the MCP server.',
+      inputSchema: {},
+      annotations: {
+        readOnlyHint: true,
+      },
+    },
+    async () => {
+      const credentials = await credentialStore.list();
+      const result = {
+        credentials,
+        credentialsFile: credentialStore.getCredentialsPath(),
+        usage:
+          'Use credential names with browser_type_credential or browser_keyboard_type_credential to type sensitive values without exposing them.',
+      };
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    }
+  );
+
+  server.registerTool(
+    'browser_has_credential',
+    {
+      title: 'Check Credential Exists',
+      description:
+        'Check if a specific credential is configured without listing all credentials. Returns true/false. Useful for conditional login flows.',
+      inputSchema: {
+        name: z.string().describe('Name of the credential to check (e.g., "github_password")'),
+      },
+      annotations: {
+        readOnlyHint: true,
+      },
+    },
+    async ({ name }) => {
+      const exists = await credentialStore.has(name);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                credential: name,
+                exists,
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    }
+  );
+
+  server.registerTool(
+    'browser_type_credential',
+    {
+      title: 'Type Credential into Element',
+      description:
+        'Type a stored credential into an input element BY REFERENCE. The actual credential value is never exposed to the model - it is resolved locally by the MCP server. Use browser_list_credentials to see available credential names.',
+      inputSchema: {
+        session_id: z.string().uuid().describe('Session ID'),
+        selector: z.string().describe('CSS selector of input element (e.g., "#password", "input[type=password]")'),
+        credential_name: z
+          .string()
+          .describe('Name of the credential to type (e.g., "github_password"). Use browser_list_credentials to see available names.'),
+        humanize: z.boolean().optional().describe('Humanize typing with random delays between keystrokes (50-150ms)'),
+        delay: z
+          .number()
+          .int()
+          .nonnegative()
+          .optional()
+          .describe('Fixed delay between keystrokes in ms (ignored if humanize is true)'),
+      },
+    },
+    async ({ session_id, selector, credential_name, humanize, delay }) => {
+      // Resolve credential locally - value never returned to model
+      const credentialValue = await credentialStore.get(credential_name);
+      if (!credentialValue) {
+        const available = await credentialStore.list();
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  success: false,
+                  error: `Credential '${credential_name}' not found`,
+                  availableCredentials: available.map((c) => c.name),
+                  hint: `Set via env var MCPROXY_CREDENTIAL_${credential_name.toUpperCase().replace(/-/g, '_')} or add to ${credentialStore.getCredentialsPath()}`,
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+
+      // Send actual value to browser server (model never sees this)
+      await sessionManager.sendCommand(session_id, 'type', {
+        selector,
+        text: credentialValue,
+        humanize,
+        delay,
+      });
+
+      // Return success without revealing the value
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                success: true,
+                credential: credential_name,
+                selector,
+                message: `Credential '${credential_name}' typed into ${selector}`,
+                // Explicitly NOT including the actual value
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    }
+  );
+
+  server.registerTool(
+    'browser_keyboard_type_credential',
+    {
+      title: 'Type Credential at Focus',
+      description:
+        'Type a stored credential at the currently focused element BY REFERENCE. Use this after clicking an input field with click_at. The actual credential value is never exposed to the model.',
+      inputSchema: {
+        session_id: z.string().uuid().describe('Session ID'),
+        credential_name: z
+          .string()
+          .describe('Name of the credential to type (e.g., "github_password"). Use browser_list_credentials to see available names.'),
+        humanize: z.boolean().optional().describe('Humanize typing with random delays between keystrokes (50-150ms)'),
+        delay: z
+          .number()
+          .int()
+          .nonnegative()
+          .optional()
+          .describe('Fixed delay between keystrokes in ms (ignored if humanize is true)'),
+      },
+    },
+    async ({ session_id, credential_name, humanize, delay }) => {
+      // Resolve credential locally - value never returned to model
+      const credentialValue = await credentialStore.get(credential_name);
+      if (!credentialValue) {
+        const available = await credentialStore.list();
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  success: false,
+                  error: `Credential '${credential_name}' not found`,
+                  availableCredentials: available.map((c) => c.name),
+                  hint: `Set via env var MCPROXY_CREDENTIAL_${credential_name.toUpperCase().replace(/-/g, '_')} or add to ${credentialStore.getCredentialsPath()}`,
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+
+      // Send actual value to browser server (model never sees this)
+      await sessionManager.sendCommand(session_id, 'keyboard_type', {
+        text: credentialValue,
+        humanize,
+        delay,
+      });
+
+      // Return success without revealing the value
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                success: true,
+                credential: credential_name,
+                message: `Credential '${credential_name}' typed at focused element`,
+                // Explicitly NOT including the actual value
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    }
+  );
+
+  server.registerTool(
+    'browser_set_credential',
+    {
+      title: 'Store Credential',
+      description:
+        'Store a credential for later use with browser_type_credential. The credential is saved to the local credentials file (~/.mcproxy/credentials.json). WARNING: Only use this for initial setup - prefer setting credentials via environment variables for production use.',
+      inputSchema: {
+        name: z.string().describe('Name for the credential (e.g., "github_password", "api_key")'),
+        value: z.string().describe('The credential value to store'),
+      },
+      annotations: {
+        destructiveHint: true,
+      },
+    },
+    async ({ name, value }) => {
+      await credentialStore.set(name, value);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                success: true,
+                credential: name,
+                storedIn: credentialStore.getCredentialsPath(),
+                message: `Credential '${name}' stored. Use browser_type_credential to type it securely.`,
+                // Explicitly NOT echoing back the value
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    }
+  );
+
+  server.registerTool(
+    'browser_delete_credential',
+    {
+      title: 'Delete Credential',
+      description:
+        'Delete a credential from the local credentials file. Note: Cannot delete credentials set via environment variables.',
+      inputSchema: {
+        name: z.string().describe('Name of the credential to delete'),
+      },
+      annotations: {
+        destructiveHint: true,
+      },
+    },
+    async ({ name }) => {
+      const deleted = await credentialStore.delete(name);
+      if (deleted) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  success: true,
+                  credential: name,
+                  message: `Credential '${name}' deleted from ${credentialStore.getCredentialsPath()}`,
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      } else {
+        // Check if it exists in env
+        const envName = `MCPROXY_CREDENTIAL_${name.toUpperCase().replace(/-/g, '_')}`;
+        if (process.env[envName]) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(
+                  {
+                    success: false,
+                    credential: name,
+                    error: `Credential '${name}' is set via environment variable ${envName}. Unset the env var to remove it.`,
+                  },
+                  null,
+                  2
+                ),
+              },
+            ],
+          };
+        }
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  success: false,
+                  credential: name,
+                  error: `Credential '${name}' not found`,
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
     }
   );
 }
