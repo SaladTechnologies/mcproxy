@@ -35,6 +35,7 @@ mcproxy/
 ├── mcp-server/             # Local MCP server (@mcproxy/mcp-server)
 │   ├── src/
 │   │   ├── browser-client.ts     # WebSocket client with heartbeat
+│   │   ├── credential-store.ts   # Secure credential storage and scrubbing
 │   │   ├── session-manager.ts    # Session lifecycle management
 │   │   └── tools/index.ts        # MCP tool definitions and handlers
 │   └── Dockerfile
@@ -128,6 +129,55 @@ docker push saladtechnologies/misc:mcproxy-browser-server
 - `MCPROXY_DEFAULT_ENDPOINT`: Optional. Default WebSocket endpoint.
 - `MCPROXY_HEARTBEAT_INTERVAL_MS`: Default 30000. Keepalive interval.
 - `MCPROXY_COMMAND_TIMEOUT_MS`: Default 30000. Command timeout.
+- `MCPROXY_CREDENTIAL_<NAME>`: Store credentials as env vars (e.g., `MCPROXY_CREDENTIAL_GITHUB_PASSWORD`).
+
+## Secure Credential Handling
+
+MCProxy supports secure credential handling so the AI model can use credentials (passwords, API keys, etc.) without ever seeing the actual values.
+
+### How It Works
+
+```
+Model: browser_type_credential(session_id, '#password', 'github_password')
+         ↓
+MCP Server: Resolves 'github_password' → actual value from local store
+         ↓
+Browser Server: Types actual value into the form field
+         ↓
+Model: Gets success confirmation (never sees the actual password)
+```
+
+### Setting Up Credentials
+
+**Option 1: Environment Variables (Recommended for production)**
+```bash
+export MCPROXY_CREDENTIAL_GITHUB_PASSWORD="my-secret-password"
+export MCPROXY_CREDENTIAL_API_KEY="sk-123..."
+```
+
+**Option 2: Credentials File**
+Create `~/.mcproxy/credentials.json`:
+```json
+{
+  "github_password": "my-secret-password",
+  "api_key": "sk-123..."
+}
+```
+
+### Credential Tools
+
+- `browser_list_credentials`: List available credential names (not values)
+- `browser_type_credential`: Type a credential into an input by selector
+- `browser_keyboard_type_credential`: Type a credential at focused element
+- `browser_set_credential`: Store a credential (for initial setup)
+- `browser_delete_credential`: Remove a credential
+
+### Security Features
+
+1. **Reference-Only Access**: Model only sees credential names, never values
+2. **Response Scrubbing**: All browser responses are automatically filtered to remove any credential values that might appear (e.g., in error messages or HTML)
+3. **Local Storage**: Credentials are stored locally on the MCP server machine, never sent to AI providers
+4. **File Permissions**: Credentials file is created with 600 permissions (owner-only read/write)
 
 ## Important Conventions
 

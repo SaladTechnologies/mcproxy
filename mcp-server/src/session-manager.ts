@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { BrowserClient } from './browser-client.js';
 import type { CommandType, CommandParams, CreateContextResult, LocationInfo, BrowserType } from '@mcproxy/shared';
+import { getCredentialStore } from './credential-store.js';
 
 interface Session {
   sessionId: string;
@@ -10,6 +11,31 @@ interface Session {
   client: BrowserClient;
   createdAt: number;
   location: LocationInfo;
+}
+
+/**
+ * Recursively scrub credential values from any value
+ * Handles strings, objects, and arrays
+ */
+async function scrubValue(value: unknown, credentialStore: ReturnType<typeof getCredentialStore>): Promise<unknown> {
+  if (typeof value === 'string') {
+    return credentialStore.scrubCredentials(value);
+  }
+
+  if (Array.isArray(value)) {
+    return Promise.all(value.map((item) => scrubValue(item, credentialStore)));
+  }
+
+  if (value !== null && typeof value === 'object') {
+    const scrubbed: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(value)) {
+      scrubbed[key] = await scrubValue(val, credentialStore);
+    }
+    return scrubbed;
+  }
+
+  // Numbers, booleans, null, undefined - return as-is
+  return value;
 }
 
 export class SessionManager {
@@ -105,7 +131,12 @@ export class SessionManager {
       contextId: session.contextId,
     } as CommandParams;
 
-    return session.client.sendCommand(command, fullParams);
+    const result = await session.client.sendCommand(command, fullParams);
+
+    // Scrub any credential values from the response before returning to model
+    // This provides defense-in-depth against accidental credential exposure
+    const credentialStore = getCredentialStore();
+    return scrubValue(result, credentialStore);
   }
 
   listSessions(): Array<{
