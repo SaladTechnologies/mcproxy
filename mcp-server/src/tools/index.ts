@@ -936,6 +936,39 @@ export function registerTools(server: McpServer, sessionManager: SessionManager)
   );
 
   server.registerTool(
+    'browser_has_credential',
+    {
+      title: 'Check Credential Exists',
+      description:
+        'Check if a specific credential is configured without listing all credentials. Returns true/false. Useful for conditional login flows.',
+      inputSchema: {
+        name: z.string().describe('Name of the credential to check (e.g., "github_password")'),
+      },
+      annotations: {
+        readOnlyHint: true,
+      },
+    },
+    async ({ name }) => {
+      const exists = await credentialStore.has(name);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                credential: name,
+                exists,
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    }
+  );
+
+  server.registerTool(
     'browser_type_credential',
     {
       title: 'Type Credential into Element',
